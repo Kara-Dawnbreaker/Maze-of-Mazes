@@ -55,6 +55,7 @@ import { CharacterPreferences, CharacterId, EquippedCosmetics } from './types/ch
 import { loadThemePreferences, getActiveTheme } from './utils/themeEngine';
 import { loadCharacterPreferences, evaluateCharacterUnlocks, saveCharacterPreferences } from './utils/characterEngine';
 import { generateImpossibleGeometry, checkPortalWarp } from './utils/impossibleEngine';
+import { MiniMap } from './components/MiniMap';
 
 export default function App() {
   // Screen state
@@ -76,6 +77,7 @@ export default function App() {
   // Gameplay state
   const [maze, setMaze] = useState<MazeGrid | null>(null);
   const [playerPos, setPlayerPos] = useState<{ r: number; c: number }>({ r: 0, c: 0 });
+  const [exploredCells, setExploredCells] = useState<Set<string>>(() => new Set(['0,0']));
   const [playerMovedRecently, setPlayerMovedRecently] = useState<boolean>(false);
   const [stepCount, setStepCount] = useState<number>(0);
   const [timeSeconds, setTimeSeconds] = useState<number>(0);
@@ -100,6 +102,19 @@ export default function App() {
   const [isCharModalOpen, setIsCharModalOpen] = useState<boolean>(false);
 
   const activeTheme: MazeTheme = getActiveTheme(themePrefs);
+
+  // Keep the explored map synchronized with the current maze and player.
+  useEffect(() => {
+    if (!maze) {
+      setExploredCells(new Set());
+      return;
+    }
+    setExploredCells((previous) => {
+      const next = previous.size === 0 ? new Set<string>() : new Set(previous);
+      next.add(`${playerPos.r},${playerPos.c}`);
+      return next;
+    });
+  }, [maze, playerPos.r, playerPos.c]);
 
   // Ambience audio category synchronizer
   useEffect(() => {
@@ -715,6 +730,9 @@ export default function App() {
             playerPos={playerPos}
             onDoorBump={handleDoorBump}
           />
+
+          {/* Compact explored-area minimap */}
+          <MiniMap maze={maze} playerPos={playerPos} exploredCells={exploredCells} />
 
           {/* On-screen D-Pad for touch & mouse */}
           <DpadControls onMove={handleDpadMove} />
