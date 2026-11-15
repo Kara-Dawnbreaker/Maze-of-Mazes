@@ -143,7 +143,8 @@ export interface LockedDoor {
   side: 'top' | 'right' | 'bottom' | 'left';
   isUnlocked: boolean;
   name: string;
-  unlockType: 'key' | 'plate' | 'switch' | 'sequence';
+  unlockType: 'key' | 'plate' | 'timed' | 'switch' | 'sequence';
+  unlockExpiresAt?: number;
   linkedPlateId?: string;
   linkedSwitchId?: string;
 }
