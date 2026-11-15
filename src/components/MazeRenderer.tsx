@@ -738,6 +738,30 @@ function drawFloorTiles(
         ctx.lineWidth = 1;
         ctx.strokeRect(x + 1, y + 1, tileSize - 2, tileSize - 2);
       }
+
+      // Seed-independent coordinate texture adds subtle tile variety without
+      // changing navigation or introducing visual noise.
+      const tileHash = (Math.imul(r + 1, 73856093) ^ Math.imul(c + 1, 19349663)) >>> 0;
+      const detail = tileHash % 11;
+      if (detail === 0 && tileSize >= 18) {
+        ctx.strokeStyle = category === 'horror'
+          ? 'rgba(148, 163, 184, 0.12)'
+          : 'rgba(120, 98, 70, 0.14)';
+        ctx.lineWidth = Math.max(0.7, tileSize * 0.018);
+        ctx.beginPath();
+        ctx.moveTo(x + tileSize * 0.24, y + tileSize * 0.32);
+        ctx.lineTo(x + tileSize * 0.38, y + tileSize * 0.43);
+        ctx.lineTo(x + tileSize * 0.31, y + tileSize * 0.58);
+        ctx.stroke();
+      } else if (detail === 3 && tileSize >= 22) {
+        ctx.fillStyle = category === 'horror'
+          ? 'rgba(148, 163, 184, 0.12)'
+          : 'rgba(120, 98, 70, 0.12)';
+        ctx.beginPath();
+        ctx.arc(x + tileSize * 0.68, y + tileSize * 0.3, tileSize * 0.025, 0, Math.PI * 2);
+        ctx.arc(x + tileSize * 0.74, y + tileSize * 0.36, tileSize * 0.018, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
   }
 }
