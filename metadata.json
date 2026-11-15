@@ -1,0 +1,6 @@
+{
+  "name": "Maze of Mazes",
+  "description": "A charming procedural maze adventure featuring an interactive journey menu, deterministic seeds, and multi-difficulty labyrinth navigation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
