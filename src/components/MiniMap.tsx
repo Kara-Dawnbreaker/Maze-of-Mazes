@@ -33,8 +33,12 @@ export const MiniMap: React.FC<MiniMapProps> = ({ maze, playerPos, exploredCells
     const padding = 12;
     const fit = Math.min((width - padding * 2) / maze.cols, (height - padding * 2) / maze.rows);
     const cellSize = Math.max(1, fit * zoom);
-    const offsetX = width / 2 - (playerPos.c + 0.5) * cellSize;
-    const offsetY = height / 2 - (playerPos.r + 0.5) * cellSize;
+    const offsetX = zoom <= 1
+      ? (width - maze.cols * cellSize) / 2
+      : width / 2 - (playerPos.c + 0.5) * cellSize;
+    const offsetY = zoom <= 1
+      ? (height - maze.rows * cellSize) / 2
+      : height / 2 - (playerPos.r + 0.5) * cellSize;
 
     ctx.save();
     ctx.translate(offsetX, offsetY);
