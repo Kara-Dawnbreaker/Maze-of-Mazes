@@ -17,6 +17,7 @@ import {
   HazardTrap,
   FloodingState,
   ImpossibleGeometryState,
+  MazeCollectible,
 } from '../types/maze';
 import { MazeTheme } from '../types/theme';
 import { CharacterId, EquippedCosmetics, AnimationState } from '../types/character';
@@ -48,6 +49,9 @@ interface MazeRendererProps {
   onPlayerPosChange?: (r: number, c: number) => void;
   playerPos?: { r: number; c: number };
   onDoorBump?: (door: LockedDoor) => void;
+  collectibles?: MazeCollectible[];
+  collectedCollectibleIds?: string[];
+  onCollectibleCollected?: (item: MazeCollectible) => void;
 }
 
 export const MazeRenderer: React.FC<MazeRendererProps> = ({
@@ -72,6 +76,9 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
   onPlayerPosChange,
   playerPos,
   onDoorBump,
+  collectibles = [],
+  collectedCollectibleIds = [],
+  onCollectibleCollected,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -195,6 +202,11 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
       if (onPlayerPosChange) {
         onPlayerPosChange(targetR, targetC);
       }
+
+      const collectible = collectibles.find(
+        (item) => item.r === targetR && item.c === targetC && !collectedCollectibleIds.includes(item.id)
+      );
+      if (collectible) onCollectibleCollected?.(collectible);
 
       // Check exit condition
       if (targetR === maze.exit.r && targetC === maze.exit.c && !gameOverTriggered.current) {
@@ -452,6 +464,12 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
       // --- 3. Draw Maze Floor Tiles (with viewport culling) ---
       drawFloorTiles(ctx, maze, tileSize, category, visGrid, floodingState, minRow, maxRow, minCol, maxCol, theme);
 
+      // --- 3b. Draw optional rewards ---
+      drawCollectibles(
+        ctx, collectibles, collectedCollectibleIds, tileSize, time,
+        minRow, maxRow, minCol, maxCol, playerGridPos.current
+      );
+
       // --- 4. Draw Hazard Traps (spikes) ---
       if (hazardTraps && hazardTraps.length > 0) {
         drawHazardTraps(ctx, hazardTraps, tileSize, time, minRow, maxRow, minCol, maxCol);
@@ -558,6 +576,72 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
     </div>
   );
 };
+
+/**
+ * Draws optional collectibles. Relics remain hidden until the player gets close.
+ */
+function drawCollectibles(
+  ctx: CanvasRenderingContext2D,
+  items: MazeCollectible[],
+  collectedIds: string[],
+  tileSize: number,
+  time: number,
+  minRow: number,
+  maxRow: number,
+  minCol: number,
+  maxCol: number,
+  player: { r: number; c: number }
+) {
+  for (const item of items) {
+    if (collectedIds.includes(item.id)) continue;
+    if (item.r < minRow || item.r > maxRow || item.c < minCol || item.c > maxCol) continue;
+    if (item.type === 'relic' && Math.abs(item.r - player.r) + Math.abs(item.c - player.c) > 2) continue;
+
+    const x = (item.c + 0.5) * tileSize;
+    const y = (item.r + 0.5) * tileSize + Math.sin(time * 0.004 + item.r + item.c) * tileSize * 0.06;
+    const pulse = 0.82 + Math.sin(time * 0.006 + item.c) * 0.12;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.scale(pulse, pulse);
+    ctx.shadowBlur = tileSize * 0.18;
+
+    if (item.type === 'coin') {
+      ctx.shadowColor = '#fbbf24';
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath();
+      ctx.arc(0, 0, tileSize * 0.16, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#fff1a6';
+      ctx.beginPath();
+      ctx.arc(-tileSize * 0.04, -tileSize * 0.04, tileSize * 0.055, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (item.type === 'key') {
+      ctx.shadowColor = '#60a5fa';
+      ctx.strokeStyle = '#93c5fd';
+      ctx.lineWidth = Math.max(2, tileSize * 0.07);
+      ctx.beginPath();
+      ctx.arc(-tileSize * 0.07, -tileSize * 0.04, tileSize * 0.11, 0, Math.PI * 2);
+      ctx.moveTo(tileSize * 0.04, tileSize * 0.04);
+      ctx.lineTo(tileSize * 0.2, tileSize * 0.2);
+      ctx.lineTo(tileSize * 0.14, tileSize * 0.25);
+      ctx.stroke();
+    } else {
+      ctx.shadowColor = '#c084fc';
+      ctx.fillStyle = '#c084fc';
+      ctx.beginPath();
+      ctx.moveTo(0, -tileSize * 0.2);
+      ctx.lineTo(tileSize * 0.16, 0);
+      ctx.lineTo(0, tileSize * 0.2);
+      ctx.lineTo(-tileSize * 0.16, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = '#f3e8ff';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+}
 
 /**
  * Draws floor tiles with visibility shading and viewport culling
