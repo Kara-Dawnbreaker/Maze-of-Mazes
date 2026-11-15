@@ -255,3 +255,12 @@ export interface ImpossibleGeometryState {
   } | null;
 }
 
+
+export type MazeCollectibleType = 'coin' | 'key' | 'relic';
+
+export interface MazeCollectible {
+  id: string;
+  r: number;
+  c: number;
+  type: MazeCollectibleType;
+}
