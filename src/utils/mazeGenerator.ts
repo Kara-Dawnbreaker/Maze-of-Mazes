@@ -137,6 +137,40 @@ export function generateMaze(
     }
   }
 
+  // Braid a small, deterministic portion of dead ends into loops.
+  // This keeps the maze readable while creating more route choices and
+  // reducing the repetitive single-corridor feel of pure DFS mazes.
+  const braidChance =
+    difficultyId === 'apprentice' ? 0.16 :
+    difficultyId === 'pathfinder' ? 0.14 :
+    difficultyId === 'master' ? 0.12 : 0.1;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if ((r === entrance.r && c === entrance.c) || (r === exit.r && c === exit.c)) {
+        continue;
+      }
+
+      const cell = cells[r][c];
+      const openPassages = DIRECTIONS.filter((dir) => !cell.walls[dir.wallCurrent]).length;
+      if (openPassages !== 1 || rng.next() >= braidChance) continue;
+
+      const closedNeighbors = DIRECTIONS
+        .map((dir) => ({ dir, r: r + dir.dr, c: c + dir.dc }))
+        .filter(({ dir, r: nr, c: nc }) =>
+          nr >= 0 && nr < rows &&
+          nc >= 0 && nc < cols &&
+          cell.walls[dir.wallCurrent]
+        );
+
+      if (closedNeighbors.length === 0) continue;
+
+      const chosen = rng.pick(closedNeighbors);
+      cell.walls[chosen.dir.wallCurrent] = false;
+      cells[chosen.r][chosen.c].walls[chosen.dir.wallNeighbor] = false;
+    }
+  }
+
   // Ensure all visited flags are reset or ready for rendering
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
@@ -177,8 +211,9 @@ export function solveMazeBFS(
   visited[start.r][start.c] = true;
   parent.set(key(start.r, start.c), null);
 
-  while (queue.length > 0) {
-    const cur = queue.shift()!;
+  let queueHead = 0;
+  while (queueHead < queue.length) {
+    const cur = queue[queueHead++];
     if (cur.r === target.r && cur.c === target.c) {
       break;
     }
