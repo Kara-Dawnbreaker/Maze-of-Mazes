@@ -102,8 +102,9 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
   // Visited cells for breadcrumbs
   const visitedCells = useRef<Set<string>>(new Set([`${maze.entrance.r},${maze.entrance.c}`]));
 
-  // Smooth camera position
+  // Smooth camera position and frame-rate independent movement timing.
   const cameraPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastFrameTimeRef = useRef<number>(0);
 
   // Tactile collision recoil offset
   const recoilOffset = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -121,6 +122,7 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
       c: maze.entrance.c,
     };
     playerDir.current = 'down';
+    lastFrameTimeRef.current = 0;
     visitedCells.current = new Set([`${maze.entrance.r},${maze.entrance.c}`]);
     gameOverTriggered.current = false;
   }, [maze]);
@@ -375,7 +377,14 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
       const width = rect.width;
       const height = rect.height;
 
-      // Smooth lerp of player animated position
+      // Frame-rate independent interpolation keeps movement equally smooth
+      // on slower laptops and high-refresh displays.
+      const frameDelta = lastFrameTimeRef.current
+        ? Math.min(50, Math.max(1, time - lastFrameTimeRef.current))
+        : 16;
+      lastFrameTimeRef.current = time;
+      const movementEase = 1 - Math.pow(0.65, frameDelta / 16);
+
       const targetX = playerGridPos.current.c;
       const targetY = playerGridPos.current.r;
       const diffX = targetX - playerAnimPos.current.x;
@@ -386,8 +395,8 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
         playerAnimPos.current.y = targetY;
         isMoving.current = false;
       } else {
-        playerAnimPos.current.x += diffX * 0.35;
-        playerAnimPos.current.y += diffY * 0.35;
+        playerAnimPos.current.x += diffX * movementEase;
+        playerAnimPos.current.y += diffY * movementEase;
       }
 
       // Determine tile size based on camera mode
