@@ -131,6 +131,17 @@ export default function App() {
   // Stopwatch timer ref
   const timerRef = useRef<number | null>(null);
   const rngRef = useRef<PRNG>(new PRNG(seed));
+  // Stable simulation timers read current state through refs.
+  const gameEndHandledRef = useRef(false);
+  const playerPosRef = useRef(playerPos);
+  const playerMovedRecentlyRef = useRef(playerMovedRecently);
+  const timeSecondsRef = useRef(timeSeconds);
+  const stalkerRef = useRef(stalker);
+  const handleDefeatRef = useRef<((cause?: 'stalker' | 'spikes' | 'drowning' | 'timeout' | 'out_of_moves') => void) | null>(null);
+  playerPosRef.current = playerPos;
+  playerMovedRecentlyRef.current = playerMovedRecently;
+  timeSecondsRef.current = timeSeconds;
+  stalkerRef.current = stalker;
 
   // Helper to initialize challenge mode parameters
   const setupChallengeLimits = useCallback(
@@ -197,6 +208,7 @@ export default function App() {
 
   // Start gameplay maze generation
   const handleStartGame = useCallback(() => {
+    gameEndHandledRef.current = false;
     const generated = generateMaze(
       seed,
       selectedDifficulty,
@@ -217,6 +229,7 @@ export default function App() {
   // Restart current maze with exact same seed
   const handleRestart = useCallback(() => {
     if (maze) {
+      gameEndHandledRef.current = false;
       setStepCount(0);
       setTimeSeconds(0);
       setPlayerMovedRecently(false);
@@ -237,6 +250,7 @@ export default function App() {
 
   // Next maze with a fresh deterministic seed
   const handleNextMaze = useCallback(() => {
+    gameEndHandledRef.current = false;
     const nextSeed = generateRandomSeed();
     setSeed(nextSeed);
     const generated = generateMaze(
@@ -266,7 +280,8 @@ export default function App() {
 
   // Victory trigger
   const handleVictory = useCallback(() => {
-    if (!maze) return;
+    if (!maze || screen !== 'PLAYING' || gameEndHandledRef.current) return;
+    gameEndHandledRef.current = true;
     sounds.playVictory();
     const runResult = recordRun({
       category: selectedCategory,
@@ -299,11 +314,14 @@ export default function App() {
     timeSeconds,
     stepCount,
     charPrefs,
+    screen,
   ]);
 
   // Defeat trigger (stalker, spikes, drowning, timeout, or out of moves)
   const handleDefeat = useCallback(
     (cause: 'stalker' | 'spikes' | 'drowning' | 'timeout' | 'out_of_moves' = 'stalker') => {
+      if (screen !== 'PLAYING' || gameEndHandledRef.current) return;
+      gameEndHandledRef.current = true;
       setDefeatCause(cause);
       sounds.playDefeatSound();
       if (maze) {
@@ -337,8 +355,10 @@ export default function App() {
       timeSeconds,
       stepCount,
       charPrefs,
+      screen,
     ]
   );
+  handleDefeatRef.current = handleDefeat;
 
   // Handle informative feedback when bumping into locked puzzle gates
   const handleDoorBump = useCallback((door: LockedDoor) => {
@@ -424,7 +444,7 @@ export default function App() {
           timeTrialLimit !== undefined &&
           elapsed >= timeTrialLimit
         ) {
-          handleDefeat('timeout');
+          handleDefeatRef.current?.('timeout');
         }
       }, 100);
     } else {
@@ -439,7 +459,7 @@ export default function App() {
         clearInterval(timerRef.current);
       }
     };
-  }, [screen, challengeMode, timeTrialLimit, handleDefeat]);
+  }, [screen, challengeMode, timeTrialLimit]);
 
   // Stalker AI loop during active play in Stalker Hunt mode
   useEffect(() => {
@@ -448,7 +468,7 @@ export default function App() {
       selectedCategory === 'horror' &&
       selectedVariant === 'stalker' &&
       maze &&
-      stalker
+      stalkerRef.current
     ) {
       const horrorParams = HORROR_DIFFICULTY_PARAMS[selectedDifficulty] || HORROR_DIFFICULTY_PARAMS.pathfinder;
 
@@ -459,9 +479,9 @@ export default function App() {
           const { nextStalker, captured, statusChanged } = updateStalkerAI(
             prev,
             maze,
-            playerPos.r,
-            playerPos.c,
-            playerMovedRecently,
+            playerPosRef.current.r,
+            playerPosRef.current.c,
+            playerMovedRecentlyRef.current,
             {
               sightDistance: horrorParams.sightDistance,
               hearingDistance: horrorParams.hearingDistance,
@@ -480,7 +500,7 @@ export default function App() {
           if (captured) {
             sounds.playDefeatSound();
             setTimeout(() => {
-              handleDefeat();
+              handleDefeatRef.current?.();
             }, 300);
           }
 
@@ -499,39 +519,39 @@ export default function App() {
         clearInterval(stalkerTimerRef.current);
       }
     };
-  }, [screen, selectedCategory, selectedVariant, maze, playerPos, playerMovedRecently, selectedDifficulty, handleDefeat]);
+  }, [screen, selectedCategory, selectedVariant, maze, selectedDifficulty]);
 
-  // Proximity Heartbeat Audio loop in Stalker Hunt mode
+  // Heartbeat loop reads live Stalker distance without restarting on every AI step.
   useEffect(() => {
     if (
       screen === 'PLAYING' &&
       selectedCategory === 'horror' &&
       selectedVariant === 'stalker' &&
-      stalker
+      stalkerRef.current
     ) {
-      const dist = stalker.distanceToPlayer;
-      if (dist <= 10) {
-        // Frequency of heartbeat accelerates as stalker gets closer
-        const intervalMs = Math.max(450, 400 + dist * 90);
-        const proximity = Math.max(0, 1 - dist / 11);
-
-        heartbeatTimerRef.current = window.setInterval(() => {
-          sounds.playHeartbeat(proximity);
-        }, intervalMs);
-      }
-    } else {
-      if (heartbeatTimerRef.current) {
-        clearInterval(heartbeatTimerRef.current);
-        heartbeatTimerRef.current = null;
-      }
+      let lastHeartbeatAt = 0;
+      heartbeatTimerRef.current = window.setInterval(() => {
+        const distance = stalkerRef.current?.distanceToPlayer ?? Infinity;
+        if (distance > 10) return;
+        const intervalMs = Math.max(450, 400 + distance * 90);
+        const now = Date.now();
+        if (now - lastHeartbeatAt >= intervalMs) {
+          sounds.playHeartbeat(Math.max(0, 1 - distance / 11));
+          lastHeartbeatAt = now;
+        }
+      }, 100);
+    } else if (heartbeatTimerRef.current !== null) {
+      clearInterval(heartbeatTimerRef.current);
+      heartbeatTimerRef.current = null;
     }
 
     return () => {
-      if (heartbeatTimerRef.current) {
+      if (heartbeatTimerRef.current !== null) {
         clearInterval(heartbeatTimerRef.current);
+        heartbeatTimerRef.current = null;
       }
     };
-  }, [screen, selectedCategory, selectedVariant, stalker]);
+  }, [screen, selectedCategory, selectedVariant]);
 
   // Hazard Simulation Tick Loop (Flooding tide & timed spike traps)
   useEffect(() => {
@@ -543,19 +563,21 @@ export default function App() {
         // Update flooding
         setFloodingState((prev) => {
           if (!prev) return null;
-          const nextFlood = updateFlooding(prev, timeSeconds, maze);
+          const currentPlayer = playerPosRef.current;
+          const nextFlood = updateFlooding(prev, timeSecondsRef.current, maze);
           // Check if player is in submerged water
-          if (nextFlood.submergedCells.has(`${playerPos.r},${playerPos.c}`)) {
-            handleDefeat('drowning');
+          if (nextFlood.submergedCells.has(`${currentPlayer.r},${currentPlayer.c}`)) {
+            handleDefeatRef.current?.('drowning');
           }
           return nextFlood;
         });
 
         // Check if player is on active spike
         setHazardTraps((traps) => {
-          const peril = checkHazardPeril(playerPos.r, playerPos.c, traps, null);
+          const currentPlayer = playerPosRef.current;
+          const peril = checkHazardPeril(currentPlayer.r, currentPlayer.c, traps, null);
           if (peril.inPeril && peril.cause) {
-            handleDefeat(peril.cause);
+            handleDefeatRef.current?.(peril.cause);
           }
           return traps;
         });
@@ -563,7 +585,7 @@ export default function App() {
 
       return () => clearInterval(interval);
     }
-  }, [screen, selectedCategory, maze, timeSeconds, playerPos, handleDefeat]);
+  }, [screen, selectedCategory, maze]);
 
   // Spacebar toggle for Camera Mode
   useEffect(() => {
