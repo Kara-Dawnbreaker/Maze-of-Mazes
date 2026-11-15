@@ -155,9 +155,18 @@ export function generateElevationMap(
     }
   }
 
-  // Ensure entrance is high enough for safe departure (elev 4.0)
+  // Preserve a dependable escape corridor along the verified shortest route.
+  // Elevation rises from the entrance toward the exit so the flood does not
+  // randomly cut across the intended route at the expected walking pace.
+  const safeRoute = maze.shortestPath;
+  const routeDenominator = Math.max(1, safeRoute.length - 1);
+  safeRoute.forEach((cell, index) => {
+    const routeElevation = 4.0 + (6.0 * index) / routeDenominator;
+    elevation[cell.r][cell.c] = Math.max(elevation[cell.r][cell.c], routeElevation);
+  });
+
+  // Ensure entrance and exit remain on their designated safe elevations.
   elevation[maze.entrance.r][maze.entrance.c] = Math.max(4.0, elevation[maze.entrance.r][maze.entrance.c]);
-  // Ensure exit is on the highest safe terrace (elev 10.0)
   elevation[maze.exit.r][maze.exit.c] = 10.0;
 
   return { elevation, maxElevation: 10 };
