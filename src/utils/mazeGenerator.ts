@@ -188,7 +188,8 @@ export function generateMaze(
     entrance,
     exit,
     seed,
-    shortestPathLength: shortestPath.length,
+    // A path contains both endpoints; movement steps are its edges.
+    shortestPathLength: Math.max(0, shortestPath.length - 1),
     shortestPath,
   };
 }
