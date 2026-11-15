@@ -140,11 +140,11 @@ export function generatePuzzleSanctum(
         i === 0
           ? `${KEY_CONFIGS[color].name} Gate`
           : i === 1
-          ? 'Pressure Portcullis'
+          ? 'Timed Portcullis'
           : i === 2
           ? 'Mechanism Lever Gate'
           : 'Glyph Sequence Arch',
-      unlockType: i === 0 ? 'key' : i === 1 ? 'plate' : i === 2 ? 'switch' : 'sequence',
+      unlockType: i === 0 ? 'key' : i === 1 ? 'timed' : i === 2 ? 'switch' : 'sequence',
       linkedPlateId: i === 1 ? `plate-${i + 1}` : undefined,
       linkedSwitchId: i === 2 ? `switch-${i + 1}` : undefined,
     };
@@ -210,7 +210,7 @@ export function generatePuzzleSanctum(
         collected: false,
         name: KEY_CONFIGS[color].name,
       });
-    } else if (newDoor.unlockType === 'plate') {
+    } else if (newDoor.unlockType === 'plate' || newDoor.unlockType === 'timed') {
       const loc = pickLocation();
       plates.push({
         id: newDoor.linkedPlateId!,
@@ -478,12 +478,14 @@ export function processPuzzleStep(
       nextPlates[i] = { ...plate, isPressed: true };
       stateChanged = true;
       sounds.playPlateClick();
-      message = 'Pressure Plate depressed! Portcullis unsealed.';
+      message = 'Pressure Plate depressed! Timed gate opened — hurry through!';
 
       nextDoors = nextDoors.map((d) => {
         if (d.id === plate.linkedDoorId) {
           sounds.playDoorUnlock();
-          return { ...d, isUnlocked: true };
+          return d.unlockType === 'timed'
+            ? { ...d, isUnlocked: true, unlockExpiresAt: Date.now() + 45000 }
+            : { ...d, isUnlocked: true };
         }
         return d;
       });
