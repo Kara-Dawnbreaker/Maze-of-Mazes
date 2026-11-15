@@ -161,6 +161,32 @@ export function generateImpossibleGeometry(
     }
   }
 
+  // Add a few false walls across real corridors. They fade away when
+  // the player reaches either side, revealing a hidden passage.
+  const illusionCandidates: Array<Pick<IllusionWall, 'r' | 'c' | 'side'>> = [];
+  for (let r = 0; r < maze.rows; r++) {
+    for (let c = 0; c < maze.cols; c++) {
+      if (
+        Math.abs(r - maze.entrance.r) + Math.abs(c - maze.entrance.c) < 2 ||
+        Math.abs(r - maze.exit.r) + Math.abs(c - maze.exit.c) < 2
+      ) continue;
+      if (c + 1 < maze.cols && canMove(maze.cells, maze.rows, maze.cols, r, c, r, c + 1)) {
+        illusionCandidates.push({ r, c, side: 'right' });
+      }
+      if (r + 1 < maze.rows && canMove(maze.cells, maze.rows, maze.cols, r, c, r + 1, c)) {
+        illusionCandidates.push({ r, c, side: 'bottom' });
+      }
+    }
+  }
+
+  const illusionCount = Math.min(
+    difficultyId === 'nightmare' ? 8 : difficultyId === 'master' ? 6 : 4,
+    illusionCandidates.length
+  );
+  rng.shuffle(illusionCandidates).slice(0, illusionCount).forEach((wall, index) => {
+    illusionWalls.push({ ...wall, revealed: false });
+  });
+
   const state: ImpossibleGeometryState = {
     portals,
     spatialLinks,
