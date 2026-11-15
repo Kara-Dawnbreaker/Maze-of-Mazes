@@ -17,6 +17,7 @@ interface VictoryModalProps {
   customDims?: CustomMazeDimensions | null;
   seed: string;
   challengeMode?: ChallengeMode;
+  personalBestSeconds?: number | null;
   newlyUnlockedAchievements?: Achievement[];
   onPlayAgain: () => void;
   onNextMaze: () => void;
@@ -31,6 +32,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   customDims,
   seed,
   challengeMode = 'none',
+  personalBestSeconds = null,
   newlyUnlockedAchievements = [],
   onPlayAgain,
   onNextMaze,
@@ -157,6 +159,12 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
             <span className="text-stone-500">Shortest Route Possible:</span>
             <span className="font-mono font-medium text-stone-900">
               {shortestPathLength} steps
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-stone-500">Personal Best:</span>
+            <span className="font-mono font-semibold text-emerald-700">
+              {personalBestSeconds === null ? 'First completion!' : `${Math.floor(personalBestSeconds / 60)}m ${(personalBestSeconds % 60).toFixed(1)}s`}
             </span>
           </div>
           <div className="flex justify-between">
