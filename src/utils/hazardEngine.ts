@@ -64,7 +64,31 @@ export function generateHazardTraps(
   const period =
     difficultyId === 'nightmare' ? 2.8 : difficultyId === 'master' ? 3.4 : difficultyId === 'pathfinder' ? 4.0 : 4.6;
 
+  const reservedPatrolCells = new Set(selected.map((pos) => `${pos.r},${pos.c}`));
+
   selected.forEach((pos, idx) => {
+    let patrolPath: Array<{ r: number; c: number }> | undefined;
+    // A portion of the spikes patrol a short, connected corridor instead of
+    // remaining fixed. Their warning/active cycle remains unchanged.
+    if (idx % 3 === 0) {
+      const directions = rng.shuffle([
+        { r: -1, c: 0 }, { r: 1, c: 0 },
+        { r: 0, c: -1 }, { r: 0, c: 1 },
+      ]);
+      const nextCell = directions
+        .map((dir) => ({ r: pos.r + dir.r, c: pos.c + dir.c }))
+        .find((next) =>
+          canMove(maze.cells, maze.rows, maze.cols, pos.r, pos.c, next.r, next.c) &&
+          !isProtected(next.r, next.c) &&
+          !reservedPatrolCells.has(`${next.r},${next.c}`)
+        );
+
+      if (nextCell) {
+        patrolPath = [pos, nextCell];
+        reservedPatrolCells.add(`${nextCell.r},${nextCell.c}`);
+      }
+    }
+
     traps.push({
       id: `trap-${idx}`,
       r: pos.r,
@@ -73,6 +97,8 @@ export function generateHazardTraps(
       state: 'safe',
       timer: (idx * 0.8) % period,
       period,
+      patrolPath,
+      patrolIndex: 0,
     });
   });
 
@@ -246,8 +272,16 @@ export function updateFlooding(
 export function updateHazardTraps(traps: HazardTrap[], dtSeconds: number): HazardTrap[] {
   return traps.map((trap) => {
     let nextTimer = trap.timer + dtSeconds;
+    let nextR = trap.r;
+    let nextC = trap.c;
+    let nextPatrolIndex = trap.patrolIndex ?? 0;
     if (nextTimer >= trap.period) {
       nextTimer = 0;
+      if (trap.patrolPath && trap.patrolPath.length > 1) {
+        nextPatrolIndex = (nextPatrolIndex + 1) % trap.patrolPath.length;
+        nextR = trap.patrolPath[nextPatrolIndex].r;
+        nextC = trap.patrolPath[nextPatrolIndex].c;
+      }
     }
 
     // Cycle breakdown:
@@ -263,6 +297,9 @@ export function updateHazardTraps(traps: HazardTrap[], dtSeconds: number): Hazar
 
     return {
       ...trap,
+      r: nextR,
+      c: nextC,
+      patrolIndex: nextPatrolIndex,
       timer: nextTimer,
       state,
     };
