@@ -162,7 +162,7 @@ export function generateElevationMap(
   const routeDenominator = Math.max(1, safeRoute.length - 1);
   safeRoute.forEach((cell, index) => {
     const routeElevation = 4.0 + (6.0 * index) / routeDenominator;
-    elevation[cell.r][cell.c] = Math.max(elevation[cell.r][cell.c], routeElevation);
+    elevation[cell.r][cell.c] = routeElevation;
   });
 
   // Ensure entrance and exit remain on their designated safe elevations.
