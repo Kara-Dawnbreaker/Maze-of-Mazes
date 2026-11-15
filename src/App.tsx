@@ -80,6 +80,7 @@ export default function App() {
   const [maze, setMaze] = useState<MazeGrid | null>(null);
   const [playerPos, setPlayerPos] = useState<{ r: number; c: number }>({ r: 0, c: 0 });
   const [exploredCells, setExploredCells] = useState<Set<string>>(() => new Set(['0,0']));
+  const exploredMazeRef = useRef<MazeGrid | null>(null);
   const [collectibles, setCollectibles] = useState<MazeCollectible[]>([]);
   const [collectedCollectibleIds, setCollectedCollectibleIds] = useState<string[]>([]);
   const [playerMovedRecently, setPlayerMovedRecently] = useState<boolean>(false);
@@ -124,16 +125,27 @@ export default function App() {
     );
   }, []);
 
-  // Keep the explored map synchronized with the current maze and player.
+  // Reset exploration for every newly generated maze, including same-seed restarts.
+  // Subsequent player moves add cells without carrying discoveries between runs.
   useEffect(() => {
     if (!maze) {
+      exploredMazeRef.current = null;
       setExploredCells(new Set());
       return;
     }
+
+    const playerKey = `${playerPos.r},${playerPos.c}`;
+    if (exploredMazeRef.current !== maze) {
+      exploredMazeRef.current = maze;
+      setExploredCells(new Set([`${maze.entrance.r},${maze.entrance.c}`, playerKey]));
+      return;
+    }
+
     setExploredCells((previous) => {
-      const next = previous.size === 0 ? new Set<string>() : new Set(previous);
-      next.add(`${playerPos.r},${playerPos.c}`);
-      return next;
+      if (previous.has(playerKey)) return previous;
+      const updated = new Set(previous);
+      updated.add(playerKey);
+      return updated;
     });
   }, [maze, playerPos.r, playerPos.c]);
 
