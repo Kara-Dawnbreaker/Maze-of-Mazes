@@ -449,7 +449,34 @@ export default function App() {
         }
       }
 
-      // 2. Impossible Geometry portal warp check
+      // 2. Reveal nearby false walls to open hidden passages.
+      if (selectedCategory === 'impossible' && impossibleState?.illusionWalls.length) {
+        const newlyRevealed = impossibleState.illusionWalls.some((wall) => {
+          const touchesCurrentCell =
+            (wall.r === r && wall.c === c) ||
+            (wall.side === 'right' && wall.r === r && wall.c + 1 === c) ||
+            (wall.side === 'bottom' && wall.r + 1 === r && wall.c === c) ||
+            (wall.side === 'left' && wall.r === r && wall.c - 1 === c) ||
+            (wall.side === 'top' && wall.r - 1 === r && wall.c === c);
+          return !wall.revealed && touchesCurrentCell;
+        });
+        if (newlyRevealed) {
+          setImpossibleState((prev) => prev ? {
+            ...prev,
+            illusionWalls: prev.illusionWalls.map((wall) => ({
+              ...wall,
+              revealed: wall.revealed ||
+                ((wall.r === r && wall.c === c) ||
+                (wall.side === 'right' && wall.r === r && wall.c + 1 === c) ||
+                (wall.side === 'bottom' && wall.r + 1 === r && wall.c === c) ||
+                (wall.side === 'left' && wall.r === r && wall.c - 1 === c) ||
+                (wall.side === 'top' && wall.r - 1 === r && wall.c === c)),
+            })),
+          } : null);
+        }
+      }
+
+      // 3. Impossible Geometry portal warp check
       if (selectedCategory === 'impossible' && impossibleState) {
         const warp = checkPortalWarp(r, c, impossibleState, Date.now());
         if (warp.didWarp && warp.targetPos) {
