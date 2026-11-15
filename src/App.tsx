@@ -601,6 +601,50 @@ export default function App() {
     };
   }, [screen, selectedCategory, selectedVariant]);
 
+  // Timed puzzle gates close after their grace period, but never while
+  // the player is standing on either side of the doorway.
+  useEffect(() => {
+    if (screen !== 'PLAYING' || selectedCategory !== 'puzzle') return;
+
+    const interval = window.setInterval(() => {
+      setPuzzleState((previous) => {
+        if (!previous) return previous;
+        const now = Date.now();
+        const player = playerPosRef.current;
+        const expiredDoors = previous.doors.filter(
+          (door) => door.unlockType === 'timed' && door.isUnlocked &&
+            door.unlockExpiresAt !== undefined && door.unlockExpiresAt <= now
+        );
+        if (expiredDoors.length === 0) return previous;
+
+        const doorsToClose = expiredDoors.filter((door) =>
+          !((player.r === door.r && player.c === door.c) ||
+            (player.r === door.targetR && player.c === door.targetC))
+        );
+        if (doorsToClose.length === 0) return previous;
+
+        const closingIds = new Set(doorsToClose.map((door) => door.id));
+        const doors = previous.doors.map((door) =>
+          closingIds.has(door.id)
+            ? { ...door, isUnlocked: false, unlockExpiresAt: undefined }
+            : door
+        );
+        const plates = previous.plates.map((plate) =>
+          closingIds.has(plate.linkedDoorId) ? { ...plate, isPressed: false } : plate
+        );
+
+        return {
+          ...previous,
+          doors,
+          plates,
+          message: 'The timed gate closed. Return to its pressure plate to reopen it.',
+        };
+      });
+    }, 250);
+
+    return () => clearInterval(interval);
+  }, [screen, selectedCategory]);
+
   // Hazard Simulation Tick Loop (Flooding tide & timed spike traps)
   useEffect(() => {
     if (screen === 'PLAYING' && selectedCategory === 'hazard' && maze) {
