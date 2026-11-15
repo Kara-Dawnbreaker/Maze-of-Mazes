@@ -755,6 +755,14 @@ export default function App() {
             onDoorBump={handleDoorBump}
           />
 
+          {/* Collectible progress */}
+          <div className="absolute left-4 top-24 z-30 flex items-center gap-2 rounded-xl border border-amber-300/70 bg-slate-950/90 px-3 py-2 text-xs font-semibold text-white shadow-lg">
+            <span>🪙 {collectedCollectibleIds.filter((id) => id.startsWith('coin-')).length}</span>
+            <span>🗝️ {collectedCollectibleIds.filter((id) => id.startsWith('key-')).length}</span>
+            <span>💎 {collectedCollectibleIds.filter((id) => id.startsWith('relic-')).length}</span>
+            <span className="text-slate-400">/ {collectibles.length}</span>
+          </div>
+
           {/* Compact explored-area minimap */}
           <MiniMap maze={maze} playerPos={playerPos} exploredCells={exploredCells} />
 
