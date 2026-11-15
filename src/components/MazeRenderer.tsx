@@ -220,7 +220,11 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
       sounds.playBump();
       recoilOffset.current = { x: -dc * 0.14, y: -dr * 0.14 };
     }
-  }, [maze, category, puzzleState, floodingState, isHorror, onStepTaken, onVictory, onPlayerPosChange, onDoorBump]);
+  }, [
+    maze, category, puzzleState, floodingState, isHorror,
+    onStepTaken, onVictory, onPlayerPosChange, onDoorBump,
+    collectibles, collectedCollectibleIds, onCollectibleCollected,
+  ]);
 
   // Check Stalker capture condition
   useEffect(() => {
@@ -564,7 +568,10 @@ export const MazeRenderer: React.FC<MazeRendererProps> = ({
 
     animId = requestAnimationFrame(render);
     return () => cancelAnimationFrame(animId);
-  }, [maze, cameraMode, showBreadcrumbs, isHorror, isDarkFog, horrorParams, stalker]);
+  }, [
+    maze, cameraMode, showBreadcrumbs, isHorror, isDarkFog, horrorParams, stalker,
+    collectibles, collectedCollectibleIds,
+  ]);
 
   return (
     <div className={`relative w-full h-full overflow-hidden select-none ${isHorror ? 'bg-[#05070D]' : 'bg-amber-50'}`}>
