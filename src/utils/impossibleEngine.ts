@@ -133,10 +133,12 @@ export function generateImpossibleGeometry(
     const remaining = shuffled.slice(cIdx).filter(
       (cell) => distanceToExit[cell.r][cell.c] >= 0
     );
-    const fromCandidates = remaining.filter((cell) =>
-      remaining.some(
-        (other) => distanceToExit[other.r][other.c] < distanceToExit[cell.r][cell.c]
-      )
+    const closestDistance = remaining.reduce(
+      (minimum, cell) => Math.min(minimum, distanceToExit[cell.r][cell.c]),
+      Number.POSITIVE_INFINITY
+    );
+    const fromCandidates = remaining.filter(
+      (cell) => distanceToExit[cell.r][cell.c] > closestDistance
     );
 
     if (fromCandidates.length > 0) {
