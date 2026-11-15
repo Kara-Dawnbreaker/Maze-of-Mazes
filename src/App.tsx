@@ -27,6 +27,7 @@ import {
   HazardTrap,
   FloodingState,
   ImpossibleGeometryState,
+  MazeCollectible,
 } from './types/maze';
 import { ChallengeMode, Achievement, PlayerProgression } from './types/progression';
 import {
@@ -55,6 +56,7 @@ import { CharacterPreferences, CharacterId, EquippedCosmetics } from './types/ch
 import { loadThemePreferences, getActiveTheme } from './utils/themeEngine';
 import { loadCharacterPreferences, evaluateCharacterUnlocks, saveCharacterPreferences } from './utils/characterEngine';
 import { generateImpossibleGeometry, checkPortalWarp } from './utils/impossibleEngine';
+import { generateCollectibles } from './utils/collectibleEngine';
 import { MiniMap } from './components/MiniMap';
 
 export default function App() {
@@ -78,6 +80,8 @@ export default function App() {
   const [maze, setMaze] = useState<MazeGrid | null>(null);
   const [playerPos, setPlayerPos] = useState<{ r: number; c: number }>({ r: 0, c: 0 });
   const [exploredCells, setExploredCells] = useState<Set<string>>(() => new Set(['0,0']));
+  const [collectibles, setCollectibles] = useState<MazeCollectible[]>([]);
+  const [collectedCollectibleIds, setCollectedCollectibleIds] = useState<string[]>([]);
   const [playerMovedRecently, setPlayerMovedRecently] = useState<boolean>(false);
   const [stepCount, setStepCount] = useState<number>(0);
   const [timeSeconds, setTimeSeconds] = useState<number>(0);
@@ -102,6 +106,23 @@ export default function App() {
   const [isCharModalOpen, setIsCharModalOpen] = useState<boolean>(false);
 
   const activeTheme: MazeTheme = getActiveTheme(themePrefs);
+
+  // Generate a deterministic set of optional rewards for each new maze.
+  useEffect(() => {
+    if (!maze) {
+      setCollectibles([]);
+      setCollectedCollectibleIds([]);
+      return;
+    }
+    setCollectibles(generateCollectibles(maze));
+    setCollectedCollectibleIds([]);
+  }, [maze]);
+
+  const handleCollectibleCollected = useCallback((item: MazeCollectible) => {
+    setCollectedCollectibleIds((previous) =>
+      previous.includes(item.id) ? previous : [...previous, item.id]
+    );
+  }, []);
 
   // Keep the explored map synchronized with the current maze and player.
   useEffect(() => {
@@ -728,6 +749,9 @@ export default function App() {
             onDefeat={handleDefeat}
             onPlayerPosChange={handlePlayerPosChange}
             playerPos={playerPos}
+            collectibles={collectibles}
+            collectedCollectibleIds={collectedCollectibleIds}
+            onCollectibleCollected={handleCollectibleCollected}
             onDoorBump={handleDoorBump}
           />
 
