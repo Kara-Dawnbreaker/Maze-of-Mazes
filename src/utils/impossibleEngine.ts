@@ -101,20 +101,62 @@ export function generateImpossibleGeometry(
   }
 
   // 2. Spatial Shortcuts (Non-adjacent cosmic wormholes)
-  // Connect an earlier section of the maze to a point closer to the exit
+  // Connect a farther corridor cell to a cell with a shorter corridor route to the exit.
   if (shuffled.length >= cIdx + 2 && (difficultyId === 'master' || difficultyId === 'nightmare')) {
-    const from = shuffled[cIdx++];
-    const to = shuffled[cIdx++];
+    const distanceToExit: number[][] = Array.from(
+      { length: maze.rows },
+      () => Array(maze.cols).fill(-1)
+    );
+    const queue: Array<{ r: number; c: number }> = [maze.exit];
+    distanceToExit[maze.exit.r][maze.exit.c] = 0;
 
-    // Verify 'to' is closer to or has a verified route to exit
-    spatialLinks.push({
-      fromR: from.r,
-      fromC: from.c,
-      toR: to.r,
-      toC: to.c,
-      isOneWay: true,
-      color: '#F43F5E',
-    });
+    for (let head = 0; head < queue.length; head++) {
+      const current = queue[head];
+      const neighbors = [
+        { r: current.r - 1, c: current.c },
+        { r: current.r + 1, c: current.c },
+        { r: current.r, c: current.c - 1 },
+        { r: current.r, c: current.c + 1 },
+      ];
+
+      for (const next of neighbors) {
+        if (
+          canMove(maze.cells, maze.rows, maze.cols, current.r, current.c, next.r, next.c) &&
+          distanceToExit[next.r][next.c] === -1
+        ) {
+          distanceToExit[next.r][next.c] = distanceToExit[current.r][current.c] + 1;
+          queue.push(next);
+        }
+      }
+    }
+
+    const remaining = shuffled.slice(cIdx).filter(
+      (cell) => distanceToExit[cell.r][cell.c] >= 0
+    );
+    const fromCandidates = remaining.filter((cell) =>
+      remaining.some(
+        (other) => distanceToExit[other.r][other.c] < distanceToExit[cell.r][cell.c]
+      )
+    );
+
+    if (fromCandidates.length > 0) {
+      const from = rng.pick(fromCandidates);
+      const toCandidates = remaining.filter(
+        (cell) => distanceToExit[cell.r][cell.c] < distanceToExit[from.r][from.c]
+      );
+
+      if (toCandidates.length > 0) {
+        const to = rng.pick(toCandidates);
+        spatialLinks.push({
+          fromR: from.r,
+          fromC: from.c,
+          toR: to.r,
+          toC: to.c,
+          isOneWay: true,
+          color: '#F43F5E',
+        });
+      }
+    }
   }
 
   const state: ImpossibleGeometryState = {
