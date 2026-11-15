@@ -199,6 +199,8 @@ export interface HazardTrap {
   state: 'safe' | 'warning' | 'active';
   timer: number;
   period: number;
+  patrolPath?: Array<{ r: number; c: number }>;
+  patrolIndex?: number;
 }
 
 export interface FloodingState {
