@@ -781,6 +781,7 @@ export default function App() {
           customDims={customDims}
           seed={maze.seed}
           challengeMode={challengeMode}
+          personalBestSeconds={progression.stats.bestTimes[selectedCategory]}
           newlyUnlockedAchievements={newlyUnlockedAchievements}
           onPlayAgain={handleRestart}
           onNextMaze={handleNextMaze}
