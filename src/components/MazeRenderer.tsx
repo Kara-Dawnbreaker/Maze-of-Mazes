@@ -1645,6 +1645,35 @@ function drawImpossibleGeometry(
     ctx.restore();
   }
 
+  // 3. False walls that disappear as the player approaches.
+  for (const wall of impossible.illusionWalls) {
+    if (wall.revealed || wall.r < minRow || wall.r > maxRow || wall.c < minCol || wall.c > maxCol) continue;
+    const x = wall.c * tileSize;
+    const y = wall.r * tileSize;
+    const pulse = 0.45 + (Math.sin(time * 0.006 + wall.r + wall.c) + 1) * 0.16;
+    ctx.save();
+    ctx.strokeStyle = `rgba(34, 211, 238, ${pulse})`;
+    ctx.shadowColor = '#22D3EE';
+    ctx.shadowBlur = tileSize * 0.16;
+    ctx.lineWidth = Math.max(2, tileSize * 0.075);
+    ctx.beginPath();
+    if (wall.side === 'right') {
+      ctx.moveTo(x + tileSize, y + tileSize * 0.08);
+      ctx.lineTo(x + tileSize, y + tileSize * 0.92);
+    } else if (wall.side === 'bottom') {
+      ctx.moveTo(x + tileSize * 0.08, y + tileSize);
+      ctx.lineTo(x + tileSize * 0.92, y + tileSize);
+    } else if (wall.side === 'left') {
+      ctx.moveTo(x, y + tileSize * 0.08);
+      ctx.lineTo(x, y + tileSize * 0.92);
+    } else {
+      ctx.moveTo(x + tileSize * 0.08, y);
+      ctx.lineTo(x + tileSize * 0.92, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // 2. Spatial Links
   for (const link of impossible.spatialLinks) {
     if (link.fromR < minRow || link.fromR > maxRow || link.fromC < minCol || link.fromC > maxCol) continue;
